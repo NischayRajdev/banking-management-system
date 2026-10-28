@@ -1,0 +1,54 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Create / Initialize Database (SQL)",
+            "type": "shell",
+            "command": "cmd",
+            "args": [
+                "/c",
+                "javac -d bin -cp \"lib/*;src/main/java\" src/main/java/com/bank/dao/SqlRunner.java && java -cp \"bin;lib/*\" com.bank.dao.SqlRunner schema.sql"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run SQL Script (Active File)",
+            "type": "shell",
+            "command": "cmd",
+            "args": [
+                "/c",
+                "java -cp \"bin;lib/*\" com.bank.dao.SqlRunner \"${file}\""
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Banking Application",
+            "type": "shell",
+            "command": "cmd",
+            "args": [
+                "/c",
+                ".\\run.bat"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Verification Test Suite",
+            "type": "shell",
+            "command": "cmd",
+            "args": [
+                "/c",
+                ".\\run.bat --test"
+            ],
+            "problemMatcher": []
+        }
+    ]
+}
+

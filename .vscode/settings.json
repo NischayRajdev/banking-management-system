@@ -1,0 +1,23 @@
+{
+    "java.project.sourcePaths": [
+        "src/main/java"
+    ],
+    "java.project.outputPath": "bin",
+    "java.project.referencedLibraries": [
+        "lib/*.jar"
+    ],
+    "code-runner.fileDirectoryAsCwd": false,
+    "code-runner.executorMap": {
+        "java": "cmd /c \".\\run.bat\"",
+        "sql": "cmd /c \"java -cp \"bin;lib/*\" com.bank.dao.SqlRunner $fileName\""
+    },
+    "sqltools.connections": [
+        {
+            "name": "Banking System SQLite",
+            "dialect": "SQLite",
+            "database": "${workspaceFolder}/bank_system.db"
+        }
+    ],
+    "sqltools.useNodeRuntime": true
+}
+
