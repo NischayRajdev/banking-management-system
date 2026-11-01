@@ -185,3 +185,32 @@ javac -d bin -cp "lib/*" src/main/java/com/bank/model/*.java src/main/java/com/b
 copy /y src\main\resources\* bin\
 java -cp "bin;lib/*" com.bank.main.BankingApplication
 ```
+
+
+---
+
+## 5. Modern Web Dashboard (Single Localhost: `http://localhost:8080`)
+
+The application includes a React 18, TypeScript, Tailwind CSS, and Recharts single-page dashboard served directly alongside the Java backend on a single localhost URL.
+
+### Launch Unified Web & API Server
+Run either script from the project root:
+
+**PowerShell:**
+```powershell
+.\start.ps1
+```
+
+**Windows CMD / Batch:**
+```cmd
+start.bat
+```
+
+Once started, open your web browser at:
+```
+http://localhost:8080
+```
+
+- **Frontend Dashboard**: `http://localhost:8080/`
+- **Core REST API**: `http://localhost:8080/api`
+- **API Health Check**: `http://localhost:8080/api/health`

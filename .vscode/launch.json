@@ -3,6 +3,13 @@
     "configurations": [
         {
             "type": "java",
+            "name": "InteractiveBankingCLI",
+            "request": "launch",
+            "mainClass": "com.bank.main.InteractiveBankingCLI",
+            "projectName": "banking-management-system"
+        },
+        {
+            "type": "java",
             "name": "Run BankingApplication",
             "request": "launch",
             "mainClass": "com.bank.main.BankingApplication",

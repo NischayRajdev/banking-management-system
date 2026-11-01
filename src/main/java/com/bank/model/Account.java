@@ -125,7 +125,7 @@ public abstract class Account implements Transactable, Auditable {
      * Calculates interest accrued based on account-specific formulas and rates.
      * Subclasses must provide polymorphic implementation.
      *
-     * @return computed interest amount (scaled to 2 decimal places)
+     * @return computed interest amount 
      */
     public abstract BigDecimal calculateInterest();
 
