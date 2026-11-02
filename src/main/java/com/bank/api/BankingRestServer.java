@@ -367,6 +367,14 @@ public class BankingRestServer {
                 handleDatabaseTables(exchange);
                 return;
             }
+            if ("/api/queries".equals(path) && "GET".equals(method)) {
+                handleGetQueries(exchange);
+                return;
+            }
+            if ("/api/queries/run".equals(path) && "GET".equals(method)) {
+                handleRunQuery(exchange);
+                return;
+            }
 
             sendResponse(exchange, 404, JsonUtil.errorJson("Endpoint not found: " + method + " " + path, "ERR_NOT_FOUND"));
         }
@@ -798,24 +806,145 @@ public class BankingRestServer {
         }
 
         private void handleDatabaseTables(HttpExchange exchange) throws IOException {
-            int customersCount = bank.getAllCustomers().size();
-            int accountsCount = bank.getAllAccounts().size();
-            int transactionsCount = bank.getTransactionDAO().findAll().size();
+            Map<String, String> descriptions = Map.of(
+                    "customers", "Customer demographic & contact entities",
+                    "accounts", "Polymorphic Savings & Current account records",
+                    "transactions", "ACID financial ledger transaction history",
+                    "loans", "Customer loan facilities & monthly EMI schedules",
+                    "cards", "Debit & Credit cards with network security limits"
+            );
+
+            List<String> tableEntries = new ArrayList<>();
+            try (java.sql.Connection conn = DBConnection.getConnection();
+                 java.sql.Statement stmt = conn.createStatement();
+                 java.sql.ResultSet rs = stmt.executeQuery("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;")) {
+                while (rs.next()) {
+                    String name = rs.getString("name");
+                    if (!name.startsWith("sqlite_")) {
+                        int rowCount = 0;
+                        try (java.sql.Statement cStmt = conn.createStatement();
+                             java.sql.ResultSet cRs = cStmt.executeQuery("SELECT COUNT(*) FROM " + name)) {
+                            if (cRs.next()) rowCount = cRs.getInt(1);
+                        } catch (Exception ignored) {}
+                        String desc = descriptions.getOrDefault(name, "Relational banking entity");
+                        tableEntries.add(String.format("{\"name\": \"%s\", \"rowCount\": %d, \"description\": \"%s\"}",
+                                JsonUtil.escape(name), rowCount, JsonUtil.escape(desc)));
+                    }
+                }
+            } catch (Exception e) {
+                tableEntries.add(String.format("{\"name\":\"customers\",\"rowCount\":%d,\"description\":\"Customer demographics\"}", bank.getAllCustomers().size()));
+                tableEntries.add(String.format("{\"name\":\"accounts\",\"rowCount\":%d,\"description\":\"Account records\"}", bank.getAllAccounts().size()));
+                tableEntries.add(String.format("{\"name\":\"transactions\",\"rowCount\":%d,\"description\":\"Ledger records\"}", bank.getTransactionDAO().findAll().size()));
+            }
 
             String json = String.format("""
                 {
                   "databaseUrl": "%s",
-                  "tables": [
-                    { "name": "customers", "rowCount": %d, "description": "Customer demographic & contact entities" },
-                    { "name": "accounts", "rowCount": %d, "description": "Polymorphic Savings & Current account records" },
-                    { "name": "transactions", "rowCount": %d, "description": "ACID financial ledger transaction history" }
-                  ]
+                  "tables": [%s]
                 }
                 """,
                     JsonUtil.escape(DBConnection.getJdbcUrl()),
-                    customersCount, accountsCount, transactionsCount
+                    String.join(", ", tableEntries)
             );
             sendResponse(exchange, 200, json);
+        }
+
+        private void handleGetQueries(HttpExchange exchange) throws IOException {
+            try {
+                List<SqlRunner.QueryBlock> queries = SqlRunner.parseQueriesWithTitles("queries.sql");
+                StringBuilder sb = new StringBuilder();
+                sb.append("{\"queries\":[");
+                for (int i = 0; i < queries.size(); i++) {
+                    SqlRunner.QueryBlock q = queries.get(i);
+                    if (i > 0) sb.append(",");
+                    sb.append(String.format("{\"id\":%d,\"title\":\"%s\",\"sql\":\"%s\"}",
+                            q.getIndex(), JsonUtil.escape(q.getTitle()), JsonUtil.escape(q.getSql())));
+                }
+                sb.append("]}");
+                sendResponse(exchange, 200, sb.toString());
+            } catch (Exception e) {
+                sendResponse(exchange, 500, JsonUtil.errorJson("Failed to parse queries: " + e.getMessage(), "ERR_QUERIES"));
+            }
+        }
+
+        private void handleRunQuery(HttpExchange exchange) throws IOException {
+            Map<String, String> params = parseQueryParams(exchange.getRequestURI().getQuery());
+            int targetId = 1;
+            if (params.containsKey("id")) {
+                try {
+                    targetId = Integer.parseInt(params.get("id"));
+                } catch (NumberFormatException ignored) {}
+            }
+
+            try {
+                List<SqlRunner.QueryBlock> queries = SqlRunner.parseQueriesWithTitles("queries.sql");
+                SqlRunner.QueryBlock target = null;
+                for (SqlRunner.QueryBlock q : queries) {
+                    if (q.getIndex() == targetId) {
+                        target = q;
+                        break;
+                    }
+                }
+
+                if (target == null) {
+                    sendResponse(exchange, 404, JsonUtil.errorJson("Query #" + targetId + " not found. Total queries: " + queries.size(), "ERR_NOT_FOUND"));
+                    return;
+                }
+
+                long start = System.currentTimeMillis();
+                try (java.sql.Connection conn = DBConnection.getConnection();
+                     java.sql.Statement stmt = conn.createStatement()) {
+                    boolean isRs = stmt.execute(target.getSql());
+                    if (isRs) {
+                        try (java.sql.ResultSet rs = stmt.getResultSet()) {
+                            java.sql.ResultSetMetaData meta = rs.getMetaData();
+                            int colCount = meta.getColumnCount();
+                            List<String> colNames = new ArrayList<>();
+                            for (int c = 1; c <= colCount; c++) {
+                                colNames.add("\"" + JsonUtil.escape(meta.getColumnLabel(c)) + "\"");
+                            }
+
+                            List<String> rowList = new ArrayList<>();
+                            while (rs.next()) {
+                                List<String> cells = new ArrayList<>();
+                                for (int c = 1; c <= colCount; c++) {
+                                    String val = rs.getString(c);
+                                    cells.add(val == null ? "null" : "\"" + JsonUtil.escape(val) + "\"");
+                                }
+                                rowList.add("[" + String.join(",", cells) + "]");
+                            }
+                            long elapsed = System.currentTimeMillis() - start;
+
+                            String json = String.format("""
+                                {
+                                  "id": %d,
+                                  "title": "%s",
+                                  "columns": [%s],
+                                  "rows": [%s],
+                                  "rowCount": %d,
+                                  "executionMs": %d
+                                }
+                                """,
+                                    target.getIndex(),
+                                    JsonUtil.escape(target.getTitle()),
+                                    String.join(",", colNames),
+                                    String.join(",", rowList),
+                                    rowList.size(),
+                                    elapsed
+                            );
+                            sendResponse(exchange, 200, json);
+                        }
+                    } else {
+                        int affected = stmt.getUpdateCount();
+                        long elapsed = System.currentTimeMillis() - start;
+                        String json = String.format("{\"id\":%d,\"title\":\"%s\",\"rowsAffected\":%d,\"executionMs\":%d}",
+                                target.getIndex(), JsonUtil.escape(target.getTitle()), affected, elapsed);
+                        sendResponse(exchange, 200, json);
+                    }
+                }
+            } catch (Exception e) {
+                sendResponse(exchange, 500, JsonUtil.errorJson("Query execution failed: " + e.getMessage(), "ERR_QUERY_EXEC"));
+            }
         }
 
         // ==================== Response & Request Helpers ====================

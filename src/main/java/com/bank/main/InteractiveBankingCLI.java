@@ -917,10 +917,11 @@ public class InteractiveBankingCLI {
             System.out.println("  [2] Re-Seed Full Sample Dataset (16 Customers, 26 Accounts, 85+ Txns)");
             System.out.println("  [3] Rapid Add 5 Additional Demo Users (Append without resetting)");
             System.out.println("  [4] Reset Database Schema Completely (Wipe all data)");
+            System.out.println("  [5] Execute & View Predefined Queries (queries.sql)");
             System.out.println("  [0] << Return to Main Menu");
             System.out.println("-".repeat(75));
 
-            int choice = promptInt("Enter choice [0-4]", 0, 4);
+            int choice = promptInt("Enter choice [0-5]", 0, 5);
             System.out.println();
 
             switch (choice) {
@@ -941,8 +942,38 @@ public class InteractiveBankingCLI {
                         printSuccess("Database schema wiped and reset successfully.");
                     }
                 }
+                case 5 -> executePredefinedQueriesFlow();
                 case 0 -> inMenu = false;
             }
+        }
+    }
+
+    private void executePredefinedQueriesFlow() {
+        printSubHeader("SQL RELATIONAL QUERY RUNNER (queries.sql)");
+        System.out.println("Available Predefined Queries in queries.sql:");
+        System.out.println("  [0]  >> Run ALL 8 Queries in Sequence");
+        System.out.println("  [1]  View all customers");
+        System.out.println("  [2]  View all accounts with formatted balance (Rs.)");
+        System.out.println("  [3]  Total bank deposits and liquidity");
+        System.out.println("  [4]  Overdrawn current accounts watchlist");
+        System.out.println("  [5]  Customer portfolio breakdown");
+        System.out.println("  [6]  Recent transaction ledger");
+        System.out.println("  [7]  Active Customer Loan Portfolios & Monthly EMI Obligations");
+        System.out.println("  [8]  Card Issuance & Security Directory by Customer & Network");
+        System.out.println("  [-1] << Back to Database Tools Menu");
+
+        int qChoice = promptInt("Select query number to execute [-1 to 8]", -1, 8);
+        if (qChoice == -1) return;
+
+        try {
+            if (qChoice == 0) {
+                com.bank.dao.SqlRunner.executeAndDisplayQueryFile("queries.sql", null);
+            } else {
+                com.bank.dao.SqlRunner.executeAndDisplayQueryFile("queries.sql", qChoice);
+            }
+            printSuccess("Query execution completed successfully!");
+        } catch (Exception e) {
+            printError("Failed to execute queries: " + e.getMessage());
         }
     }
 
@@ -953,24 +984,17 @@ public class InteractiveBankingCLI {
         try (Connection conn = DBConnection.getConnection();
              Statement stmt = conn.createStatement()) {
 
-            int custCount = 0;
-            int accCount = 0;
-            int txnCount = 0;
-
-            try (ResultSet rs = stmt.executeQuery("SELECT count(*) FROM customers")) {
-                if (rs.next()) custCount = rs.getInt(1);
+            System.out.println("  Live Table Counts in SQLite Database:");
+            String[] tables = {"customers", "accounts", "transactions", "loans", "cards"};
+            for (String tbl : tables) {
+                try (ResultSet rs = stmt.executeQuery("SELECT count(*) FROM " + tbl)) {
+                    if (rs.next()) {
+                        System.out.printf("    - %-20s : %d rows%n", tbl.substring(0, 1).toUpperCase() + tbl.substring(1) + " Table", rs.getInt(1));
+                    }
+                } catch (Exception ignored) {
+                    System.out.printf("    - %-20s : (table not created)%n", tbl);
+                }
             }
-            try (ResultSet rs = stmt.executeQuery("SELECT count(*) FROM accounts")) {
-                if (rs.next()) accCount = rs.getInt(1);
-            }
-            try (ResultSet rs = stmt.executeQuery("SELECT count(*) FROM transactions")) {
-                if (rs.next()) txnCount = rs.getInt(1);
-            }
-
-            System.out.println("  Total Row Records in SQLite Database:");
-            System.out.println("    - Customers Table    : " + custCount + " rows");
-            System.out.println("    - Accounts Table     : " + accCount + " rows");
-            System.out.println("    - Transactions Table : " + txnCount + " rows");
 
         } catch (Exception e) {
             printError("Failed to query database stats: " + e.getMessage());

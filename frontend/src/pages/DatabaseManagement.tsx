@@ -110,6 +110,40 @@ CREATE TABLE IF NOT EXISTS transactions (
     remarks VARCHAR(255),
     timestamp VARCHAR(50) NOT NULL,
     FOREIGN KEY (account_number) REFERENCES accounts(account_number)
+);
+
+-- 4. Loans Table
+CREATE TABLE IF NOT EXISTS loans (
+    loan_id VARCHAR(50) PRIMARY KEY,
+    customer_id VARCHAR(50) NOT NULL,
+    account_number VARCHAR(50),
+    loan_type VARCHAR(30) NOT NULL,
+    principal_amount DECIMAL(15,2) NOT NULL,
+    interest_rate DECIMAL(6,4) NOT NULL,
+    term_months INTEGER NOT NULL,
+    monthly_emi DECIMAL(15,2) NOT NULL,
+    outstanding_balance DECIMAL(15,2) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    disbursed_at VARCHAR(50) NOT NULL,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+    FOREIGN KEY (account_number) REFERENCES accounts(account_number)
+);
+
+-- 5. Cards Table
+CREATE TABLE IF NOT EXISTS cards (
+    card_id VARCHAR(50) PRIMARY KEY,
+    account_number VARCHAR(50) NOT NULL,
+    customer_id VARCHAR(50) NOT NULL,
+    card_number VARCHAR(30) UNIQUE NOT NULL,
+    card_type VARCHAR(20) NOT NULL,
+    card_network VARCHAR(20) NOT NULL,
+    expiry_date VARCHAR(10) NOT NULL,
+    daily_limit DECIMAL(15,2) NOT NULL,
+    credit_limit DECIMAL(15,2),
+    status VARCHAR(20) NOT NULL,
+    issued_at VARCHAR(50) NOT NULL,
+    FOREIGN KEY (account_number) REFERENCES accounts(account_number),
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
 );`;
 
   return (

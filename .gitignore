@@ -3,6 +3,11 @@ bin/
 target/
 *.class
 
+# Node / Frontend outputs
+node_modules/
+**/node_modules/
+frontend/dist/
+
 # SQLite database file (automatically created and seeded by DatabaseSeeder or schema.sql)
 bank_system.db
 *.db
@@ -14,8 +19,9 @@ sources.txt
 # Log files
 *.log
 
-# IDE specific files (optional/local)
+# IDE and OS specific files
 .settings/
 .idea/
 *.iml
-
+.DS_Store
+Thumbs.db

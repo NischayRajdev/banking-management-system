@@ -77,7 +77,7 @@ public class DBConnection {
         return DriverManager.getConnection(jdbcUrl);
     }
 
-    // initializeDatabase: Creates customers, accounts, and transactions tables if not existing
+    // initializeDatabase: Creates customers, accounts, transactions, and auxiliary banking tables if not existing
     public static synchronized void initializeDatabase() {
         String createCustomersTable = """
                 CREATE TABLE IF NOT EXISTS customers (
@@ -124,12 +124,61 @@ public class DBConnection {
                 );
                 """;
 
+        String createLoansTable = """
+                CREATE TABLE IF NOT EXISTS loans (
+                    loan_id VARCHAR(50) PRIMARY KEY,
+                    customer_id VARCHAR(50) NOT NULL,
+                    account_number VARCHAR(50),
+                    loan_type VARCHAR(30) NOT NULL,
+                    principal_amount DECIMAL(15,2) NOT NULL,
+                    interest_rate DECIMAL(6,4) NOT NULL,
+                    term_months INTEGER NOT NULL,
+                    monthly_emi DECIMAL(15,2) NOT NULL,
+                    outstanding_balance DECIMAL(15,2) NOT NULL,
+                    status VARCHAR(20) NOT NULL,
+                    disbursed_at VARCHAR(50) NOT NULL,
+                    FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+                    FOREIGN KEY (account_number) REFERENCES accounts(account_number)
+                );
+                """;
+
+        String createCardsTable = """
+                CREATE TABLE IF NOT EXISTS cards (
+                    card_id VARCHAR(50) PRIMARY KEY,
+                    account_number VARCHAR(50) NOT NULL,
+                    customer_id VARCHAR(50) NOT NULL,
+                    card_number VARCHAR(30) UNIQUE NOT NULL,
+                    card_type VARCHAR(20) NOT NULL,
+                    card_network VARCHAR(20) NOT NULL,
+                    expiry_date VARCHAR(10) NOT NULL,
+                    daily_limit DECIMAL(15,2) NOT NULL,
+                    credit_limit DECIMAL(15,2),
+                    status VARCHAR(20) NOT NULL,
+                    issued_at VARCHAR(50) NOT NULL,
+                    FOREIGN KEY (account_number) REFERENCES accounts(account_number),
+                    FOREIGN KEY (customer_id) REFERENCES customers(customer_id)
+                );
+                """;
+
         try (Connection conn = DriverManager.getConnection(jdbcUrl);
              Statement stmt = conn.createStatement()) {
 
             stmt.execute(createCustomersTable);
             stmt.execute(createAccountsTable);
             stmt.execute(createTransactionsTable);
+            stmt.execute(createLoansTable);
+            stmt.execute(createCardsTable);
+
+            // Create performance indexes
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_customers_email ON customers(email);");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_accounts_customer ON accounts(customer_id);");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_accounts_type ON accounts(account_type);");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_transactions_account ON transactions(account_number);");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_transactions_timestamp ON transactions(timestamp);");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_loans_customer ON loans(customer_id);");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_loans_status ON loans(status);");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_cards_account ON cards(account_number);");
+            stmt.execute("CREATE INDEX IF NOT EXISTS idx_cards_customer ON cards(customer_id);");
 
         } catch (SQLException e) {
             throw new DatabaseException("Failed to initialize database schema.", e);
@@ -141,6 +190,8 @@ public class DBConnection {
         try (Connection conn = DriverManager.getConnection(jdbcUrl);
              Statement stmt = conn.createStatement()) {
 
+            stmt.execute("DROP TABLE IF EXISTS cards;");
+            stmt.execute("DROP TABLE IF EXISTS loans;");
             stmt.execute("DROP TABLE IF EXISTS transactions;");
             stmt.execute("DROP TABLE IF EXISTS accounts;");
             stmt.execute("DROP TABLE IF EXISTS customers;");

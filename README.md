@@ -181,15 +181,69 @@ mvn clean compile exec:java
 
 ### Option 4: Manual Compilation with standard `javac` & `java`
 ```cmd
-javac -d bin -cp "lib/*" src/main/java/com/bank/model/*.java src/main/java/com/bank/exception/*.java src/main/java/com/bank/dao/*.java src/main/java/com/bank/service/*.java src/main/java/com/bank/main/*.java
+javac -d bin -cp "lib/*" src/main/java/com/bank/model/*.java src/main/java/com/bank/exception/*.java src/main/java/com/bank/dao/*.java src/main/java/com/bank/service/*.java src/main/java/com/bank/main/*.java src/main/java/com/bank/api/*.java
 copy /y src\main\resources\* bin\
 java -cp "bin;lib/*" com.bank.main.BankingApplication
 ```
 
+---
+
+## 5. SQL Database Schema & Query Runners (`queries.sql`)
+
+The database includes 5 core relational tables with 3NF foreign-key relationships and performance indexes:
+1. `customers`: Customer demographic and contact records
+2. `accounts`: Polymorphic Savings and Current accounts with balances and overdraft limits
+3. `transactions`: ACID financial ledger audit history
+4. `loans`: Loan accounts (Personal, Home, Auto, Business) with EMI schedules and balances
+5. `cards`: Debit and Credit cards with network issuers (RuPay, Visa, Mastercard) and daily limits
+
+### Running Queries (`queries.sql`)
+
+You can execute all 8 predefined business queries or a specific query using any of the following connections:
+
+#### Option A: Using PowerShell Query Runner
+```powershell
+# Run all 8 queries with formatted tabular results
+.\run-queries.ps1
+
+# Run a specific query by number (e.g., Query #7: Loan Portfolios)
+.\run-queries.ps1 7
+```
+
+#### Option B: Using Windows Command Prompt (CMD)
+```cmd
+# Run all queries
+.\run-queries.bat
+
+# Run specific query
+.\run-queries.bat 7
+```
+
+#### Option C: Using Java JDBC Directly
+```cmd
+java -cp "bin;lib/*" com.bank.dao.SqlRunner queries.sql
+java -cp "bin;lib/*" com.bank.dao.SqlRunner queries.sql 8
+```
+
+#### Option D: Using Fast Node.js Runner (`node:sqlite`)
+```cmd
+node run-queries.cjs
+node run-queries.cjs 9
+```
+
+#### Option E: From the Interactive Console Menu
+Start the application (`.\run.ps1` or `.\run.bat`), select:
+`[5] Database & Seeder Tools` -> `[5] Execute & View Predefined Queries (queries.sql)`
+
+#### Option F: Via REST API
+When the server is running (`.\start.ps1` or `.\start.bat`):
+- List available queries: `GET http://localhost:8080/api/queries`
+- Run query by ID: `GET http://localhost:8080/api/queries/run?id=7`
+- View table statistics: `GET http://localhost:8080/api/database/tables`
 
 ---
 
-## 5. Modern Web Dashboard (Single Localhost: `http://localhost:8080`)
+## 6. Modern Web Dashboard (Single Localhost: `http://localhost:8080`)
 
 The application includes a React 18, TypeScript, Tailwind CSS, and Recharts single-page dashboard served directly alongside the Java backend on a single localhost URL.
 
